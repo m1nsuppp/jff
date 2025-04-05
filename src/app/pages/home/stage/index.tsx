@@ -6,6 +6,7 @@ import { useBackgroundRemover } from '../background-remover-context';
 import { useMutation, useQueries } from '@tanstack/react-query';
 import { loadHTMLImageElement } from '@/lib/utils/image';
 import { Upload as UploadIcon, Loader } from 'lucide-react';
+import { drawImages, isSelection } from './canvas.utils';
 
 export function Stage(): JSX.Element {
   const dpr = useDPR();
@@ -29,15 +30,6 @@ export function Stage(): JSX.Element {
       isLoadHTMLImageElementPending: queryResults.some((queryResult) => queryResult.isPending),
     }),
   });
-
-  const drawImages = (context: CanvasRenderingContext2D, images: HTMLImageElement[]): void => {
-    images.forEach((htmlImageElement) => {
-      const halfFactor = 2;
-      const dx = context.canvas.width / halfFactor - htmlImageElement.width / halfFactor;
-      const dy = context.canvas.height / halfFactor - htmlImageElement.height / halfFactor;
-      context.drawImage(htmlImageElement, dx, dy);
-    });
-  };
 
   useEffect(() => {
     const { current: canvas } = canvasRef;
@@ -136,6 +128,31 @@ export function Stage(): JSX.Element {
           <canvas
             ref={canvasRef}
             className="w-full h-full"
+            onMouseMove={(event) => {
+              const { current: canvas } = canvasRef;
+              if (canvas === null) {
+                return;
+              }
+
+              const context = canvas.getContext('2d');
+              if (context === null) {
+                return;
+              }
+
+              const { clientX, clientY } = event;
+              const filteredHtmlImageElements = htmlImageElements.filter(
+                (htmlImageElement) => htmlImageElement !== undefined,
+              );
+              const isAnyImageSelected = filteredHtmlImageElements.some((htmlImageElement) =>
+                isSelection(context, htmlImageElement, clientX, clientY),
+              );
+
+              if (isAnyImageSelected) {
+                canvas.style.cursor = 'pointer';
+              } else {
+                canvas.style.cursor = 'default';
+              }
+            }}
           />
         </StageWrapper>
       )}
